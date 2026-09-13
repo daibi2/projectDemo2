@@ -5,9 +5,11 @@ import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 
 const COOKIE_NAME = "parking_session";
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET ?? "development-only-secret-change-before-production",
-);
+function sessionSecret() {
+  const value = process.env.JWT_SECRET ?? (process.env.NODE_ENV !== "production" ? "development-only-secret-change-before-production" : "");
+  if (!value) throw new AppError("服务尚未配置 JWT_SECRET。", 500, "AUTH_CONFIGURATION_ERROR");
+  return new TextEncoder().encode(value);
+}
 
 export type SessionUser = { id: number; name: string; email: string };
 
@@ -17,14 +19,14 @@ export async function createSession(user: SessionUser) {
     .setSubject(String(user.id))
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(secret);
+    .sign(sessionSecret());
 }
 
 export async function currentUser(): Promise<SessionUser | null> {
   const token = (await cookies()).get(COOKIE_NAME)?.value;
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, secret);
+    const { payload } = await jwtVerify(token, sessionSecret());
     const id = Number(payload.sub);
     if (!Number.isSafeInteger(id)) return null;
     const user = getDb()
