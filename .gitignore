@@ -1,0 +1,8 @@
+node_modules
+.next
+parking.db
+parking.db-shm
+parking.db-wal
+.env
+.env.local
+coverage
